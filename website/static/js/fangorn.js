@@ -1,7 +1,7 @@
 /**
  * Fangorn: Defining Treebeard options for OSF.
  * For Treebeard and _item API's check: https://github.com/caneruguz/treebeard/wiki
- */
+**/
 
 'use strict';
 
