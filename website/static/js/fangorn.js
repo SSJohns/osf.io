@@ -1316,6 +1316,10 @@ function _fangornColumnTitles () {
         sort : true,
         sortType : 'text'
     }, {
+      title: 'Version',
+      width: '5%',
+      sort: false
+    }, {
         title : 'Size',
         width : '10%',
         sort : false
