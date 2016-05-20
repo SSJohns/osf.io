@@ -1312,12 +1312,12 @@ function _fangornColumnTitles () {
     columns.push(
     {
         title: 'Name',
-        width : '80%',
+        width : '70%',
         sort : true,
         sortType : 'text'
     }, {
       title: 'Version',
-      width: '5%',
+      width: '10%',
       sort: false
     }, {
         title : 'Size',
