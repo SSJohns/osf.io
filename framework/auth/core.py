@@ -573,7 +573,7 @@ class User(GuidStoredObject, AddonModelMixin):
 
     def create_share_window(self):
         from website.project.model import Node
-        share_window = Node(creator=self)
+        share_window = Share(creator=self)
         share_window.is_share_window = True
         share_window.title = "Share Window"
         share_window.category = "share window"
