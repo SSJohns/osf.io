@@ -43,6 +43,7 @@ from website.discovery import views as discovery_views
 from website.conferences import views as conference_views
 from website.preprints import views as preprint_views
 from website.institutions import views as institution_views
+from website.share import views as public_views
 from website.notifications import views as notification_views
 
 def get_globals():
@@ -1023,6 +1024,14 @@ def make_url_map(app):
                 '/project/<pid>/share_window/',
                 '/project/<pid>/node/<nid>/share_window/',
             ],
+            'get',
+            project_views.file.collect_file_trees_for_share_window,
+            OsfWebRenderer('project/share_window.mako', trust=False),
+            view_kwargs={'mode': 'page'},
+        ),
+
+        Rule(
+            '/<pid>/share_window/',
             'get',
             project_views.file.collect_file_trees_for_share_window,
             OsfWebRenderer('project/share_window.mako', trust=False),
