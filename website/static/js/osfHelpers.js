@@ -1,12 +1,15 @@
 'use strict';
 var ko = require('knockout');
 var $ = require('jquery');
+var m = require('mithril');
 require('jquery-blockui');
 var Raven = require('raven-js');
 var moment = require('moment');
 var URI = require('URIjs');
 var bootbox = require('bootbox');
 var iconmap = require('js/iconmap');
+var lodashGet = require('lodash.get');
+
 
 // TODO: For some reason, this require is necessary for custom ko validators to work
 // Why?!
@@ -26,6 +29,26 @@ var growl = function(title, message, type, delay) {
     new GrowlBox(title, message, type || 'danger', delay);
 };
 
+var softGrowl = function(icon, message, type) {
+
+    $.growl({
+        message: message,
+        icon: icon
+        }, {
+        type: type,
+        allow_dismiss: false,
+        mouse_over: 'pause',
+        placement: {
+            from: "top",
+            align: "center"
+        },
+        animate: {
+            enter: 'animated fadeInDown',
+            exit: 'animated fadeOut'
+        }
+    });
+
+};
 
 /**
  * Generate OSF absolute URLs, including prefix and arguments. Assumes access to mako globals for pieces of URL.
@@ -765,9 +788,9 @@ var any = function(listOfBools, check) {
     return false;
 };
 
-/** 
+/**
  * A helper for creating a style-guide conformant bootbox modal. Returns a promise.
- * @param {String} title: 
+ * @param {String} title:
  * @param {String} message:
  * @param {String} actionButtonLabel:
  * @param {Object} options: optional options
@@ -839,6 +862,42 @@ var findContribName = function (userAttributes) {
     }
 };
 
+// For use in extracting contributor names from API v2 contributor response
+var extractContributorNamesFromAPIData = function(contributor){
+    var familyName = '';
+    var givenName = '';
+    var fullName = '';
+    var middleNames = '';
+
+    if (lodashGet(contributor, 'attributes.unregistered_contributor')){
+        fullName = contributor.attributes.unregistered_contributor;
+    }
+
+    else if (lodashGet(contributor, 'embeds.users.data')) {
+        var attributes = contributor.embeds.users.data.attributes;
+        familyName = attributes.family_name;
+        givenName = attributes.given_name;
+        fullName = attributes.full_name;
+        middleNames = attributes.middle_names;
+    }
+    else if (lodashGet(contributor, 'embeds.users.errors')) {
+        var meta = contributor.embeds.users.errors[0].meta;
+        familyName = meta.family_name;
+        givenName = meta.given_name;
+        fullName = meta.full_name;
+        middleNames = meta.middle_names;
+    }
+
+    return {
+        'familyName': familyName,
+        'givenName': givenName,
+        'fullName': fullName,
+        'middleNames': middleNames
+    };
+};
+
+
+// Google analytics event tracking on the dashboard/my projects pages
 var trackClick = function(category, action, label){
     window.ga('send', 'event', category, action, label);
     //in order to make the href redirect work under knockout onclick binding
@@ -857,6 +916,20 @@ function onScrollToBottom(element, callback) {
     });
 }
 
+// Mithril elements converted to HTML string, example m('div', 'hello world') returns '<div>hello world</div>', for
+// readablity of templates that only take strings as parameter
+function mithrilToStr(element) {
+    var tmp = document.createElement('div');
+    var el = m.render(tmp, element);
+    return tmp.innerHTML;
+}
+
+function mergeMithrilwithDOM(domElement, mithrilElement) {
+    var container = document.createElement('div');
+    domElement.appendChild(container);
+    m.render(container, mithrilElement);
+}
+
 // Also export these to the global namespace so that these can be used in inline
 // JS. This is used on the /goodbye page at the moment.
 module.exports = window.$.osf = {
@@ -870,6 +943,7 @@ module.exports = window.$.osf = {
     block: block,
     unblock: unblock,
     growl: growl,
+    softGrowl: softGrowl,
     apiV2Url: apiV2Url,
     joinPrompts: joinPrompts,
     mapByProperty: mapByProperty,
@@ -896,5 +970,8 @@ module.exports = window.$.osf = {
     contribNameFormat: contribNameFormat,
     trackClick: trackClick,
     findContribName: findContribName,
-    onScrollToBottom: onScrollToBottom
+    onScrollToBottom: onScrollToBottom,
+    mithrilToStr:mithrilToStr,
+    mergeMithrilwithDOM:mergeMithrilwithDOM,
+    extractContributorNamesFromAPIData: extractContributorNamesFromAPIData,
 };

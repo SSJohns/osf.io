@@ -166,6 +166,10 @@ NodeFetcher.prototype = {
     this.nextLink = results.links.next;
     this.loaded += results.data.length;
     for(var i = 0; i < results.data.length; i++) {
+      if(results.data[i].attributes.category === 'share window'){
+          continue; // Exclude share window
+      }
+
       if (this.type === 'registrations' && (results.data[i].attributes.withdrawn === true || results.data[i].attributes.pending_registration_approval === true))
           continue; // Exclude retracted and pending registrations
       else if (results.data[i].relationships.parent && this._handleOrphans)
@@ -269,18 +273,14 @@ function _formatDataforPO(item) {
     if (contributorsData){
         item.embeds.contributors.data.forEach(function(c){
             var attr;
-            var users = lodashGet(c, 'embeds.users.data', null);
-            if (users) {
-                if (users.errors) {
-                    attr = users.errors[0].meta;
-                } else {
-                    attr = users.attributes;
-                }
-            }
-            if (attr) {
-                item.contributors += attr.full_name + ' ' + attr.middle_names + ' ' + attr.given_name + ' ' + attr.family_name + ' ' ;
-            }
+            var contribNames = $osf.extractContributorNamesFromAPIData(c);
 
+            if (lodashGet(c, 'attributes.unregistered_contributor', null)) {
+                item.contributors += contribNames.fullName;
+            }
+            else {
+                item.contributors += contribNames.fullName + ' ' + contribNames.middleNames + ' ' + contribNames.givenName + ' ' + contribNames.familyName + ' ' ;
+            }
         });
     }
     item.date = new $osf.FormattableDate(item.attributes.date_modified);
@@ -288,7 +288,7 @@ function _formatDataforPO(item) {
     //
     //Sets for filtering
     item.tagSet = new Set(item.attributes.tags || []);
-    var contributors = item.embeds.contributors.data || [];
+    var contributors = lodashGet(item, 'embeds.contributors.data', []);
     item.contributorSet= new Set(contributors.map(function(contrib) {
       return contrib.id;
     }));
@@ -446,7 +446,7 @@ var MyProjects = {
                 var id = item.data.id;
                 if(!item.data.attributes.retracted){
                     var urlPrefix = item.data.attributes.registration ? 'registrations' : 'nodes';
-                    var url = $osf.apiV2Url(urlPrefix + '/' + id + '/logs/', { query : { 'page[size]' : 6, 'embed' : ['original_node', 'user', 'linked_node', 'template_node', 'contributors']}});
+                    var url = $osf.apiV2Url(urlPrefix + '/' + id + '/logs/', { query : { 'page[size]' : 6, 'embed' : ['original_node', 'user', 'linked_node', 'template_node']}});
                     var promise = self.getLogs(url);
                     return promise;
                 }
@@ -634,7 +634,8 @@ var MyProjects = {
                             'You have not created any projects yet.');
                     } else if (lastcrumb.data.nodeType === 'registrations'){
                         template = m('.db-non-load-template.m-md.p-md.osf-box',
-                            'You have not made any registrations yet.');
+                            'You have not made any registrations yet. Go to ',
+                            m('a', {href: 'http://help.osf.io/m/registrations'}, 'Getting Started'), ' to learn how registrations work.' );
                     } else {
                         template = m('.db-non-load-template.m-md.p-md.osf-box',
                             'This collection is empty.' + self.viewOnly ? '' : ' To add projects or registrations, click "All my projects" or "All my registrations" in the sidebar, and then drag and drop items into the collection link.');
@@ -679,11 +680,25 @@ var MyProjects = {
                         if(self.users[u.id] === undefined) {
                             self.users[u.id] = {
                                 data : u,
-                                count: 1
+                                count: 1,
+                                unregistered_contributors: u.attributes.unregistered_contributor
                         };
                     } else {
                         self.users[u.id].count++;
-                    }}
+                            var currentUnregisteredName = lodashGet(u, 'attributes.unregistered_contributor');
+                            if (currentUnregisteredName) {
+                                var otherUnregisteredName = lodashGet(self.users[u.id], 'unregistered_contributors');
+                                if (otherUnregisteredName) {
+                                     if (otherUnregisteredName.indexOf(currentUnregisteredName) === -1) {
+                                         self.users[u.id].unregistered_contributors += ' a.k.a. ' + currentUnregisteredName;
+                                     }
+                                }
+                                else {
+                                    self.users[u.id].unregistered_contributors = currentUnregisteredName;
+                                }
+                            }
+                        }
+                    }
                     var tags = item.attributes.tags || [];
                     for(var j = 0; j < tags.length; j++) {
                         var t = tags[j];
@@ -695,7 +710,6 @@ var MyProjects = {
                     }
                 }
             });
-
 
             // Sorting by number of items utility function
             function sortByCountDesc (a,b){
@@ -714,6 +728,9 @@ var MyProjects = {
             self.nameFilters = [];
 
             var userFinder = function(lo) {
+                if (u2.unregistered_contributors) {
+                    return lo.label === u2.unregistered_contributors;
+                }
               return lo.label === u2.data.embeds.users.data.attributes.full_name;
             };
 
@@ -721,7 +738,14 @@ var MyProjects = {
             for (var user in self.users) {
                 var u2 = self.users[user];
                 if (u2.data.embeds.users.data) {
-                  var link = oldNameFilters.find(userFinder) || new LinkObject('contributor', {id: u2.data.id, count: u2.count, query: { 'related_counts' : 'children' }}, u2.data.embeds.users.data.attributes.full_name, options.institutionId || false);
+                    var name;
+                    if (u2.unregistered_contributors) {
+                        name = u2.unregistered_contributors;
+                    }
+                    else {
+                        name = u2.data.embeds.users.data.attributes.full_name;
+                    }
+                  var link = oldNameFilters.find(userFinder) || new LinkObject('contributor', {id: u2.data.id, count: u2.count, query: { 'related_counts' : 'children' }}, name, options.institutionId || false);
                   link.data.count = u2.count;
                   self.nameFilters.push(link);
                 }
@@ -1095,7 +1119,6 @@ var Collections = {
             self.newCollectionName('');
             self.isValid(false);
             $('#addCollInput').val('');
-            $osf.trackClick('myProjects', 'add-collection', 'click-cancel-button');
         },
         self.deleteCollection = function _deleteCollection(){
             var url = self.collectionMenuObject().item.data.node.links.self;
@@ -1362,6 +1385,7 @@ var Collections = {
                             {
                                 onclick : function(){
                                     ctrl.resetAddCollection();
+                                    $osf.trackClick('myProjects', 'add-collection', 'click-cancel-button');
                                 }
                             }, 'Cancel'),
                         ctrl.isValid() ? m('button[type="button"].btn.btn-success', { onclick : function() {
@@ -1757,31 +1781,6 @@ var Filters = {
  */
 var Information = {
     view : function (ctrl, args) {
-        function categoryMap(category) {
-            // TODO, you don't need to do this, CSS will do this case change
-            switch (category) {
-                case 'analysis':
-                    return 'Analysis';
-                case 'communication':
-                    return 'Communication';
-                case 'data':
-                    return 'Data';
-                case 'hypothesis':
-                    return 'Hypothesis';
-                case 'methods and measures':
-                    return 'Methods and Measures';
-                case 'procedure':
-                    return 'Procedure';
-                case 'project':
-                    return 'Project';
-                case 'software':
-                    return 'Software';
-                case 'other':
-                    return 'Other';
-                default:
-                    return 'Uncategorized';
-            }
-        }
         var template = '';
         var showRemoveFromCollection;
         var collectionFilter = args.currentView().collection;
@@ -1816,7 +1815,7 @@ var Information = {
                         m('[role="tabpanel"].tab-pane.active#tab-information',[
                             m('p.db-info-meta.text-muted', [
                                 m('', 'Visibility : ' + (item.attributes.public ? 'Public' : 'Private')),
-                                m('', 'Category: ' + categoryMap(item.attributes.category)),
+                                m('div.capitalize', 'Category: ' + item.attributes.category),
                                 m('', 'Last Modified on: ' + (item.date ? item.date.local : ''))
                             ]),
                             m('p', [
