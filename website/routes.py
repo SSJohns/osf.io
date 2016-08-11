@@ -4,6 +4,8 @@ import httplib as http
 
 from flask import request, Response
 from flask import send_from_directory
+from modularodm import Q
+from modularodm.exceptions import QueryException, NoResultsFound
 
 import requests
 from geoip import geolite2
@@ -23,10 +25,6 @@ from framework.routing import process_rules
 from framework.auth import views as auth_views
 from framework.routing import render_mako_string
 from framework.auth.core import _get_current_user
-
-from modularodm import Q
-from modularodm.exceptions import QueryException, NoResultsFound
-
 from website import util
 from website import prereg
 from website import settings
@@ -43,11 +41,13 @@ from website.search import views as search_views
 from website.oauth import views as oauth_views
 from website.profile import views as profile_views
 from website.project import views as project_views
+from website.project.model import Node
 from website.addons.base import views as addon_views
 from website.discovery import views as discovery_views
 from website.conferences import views as conference_views
 from website.preprints import views as preprint_views
 from website.institutions import views as institution_views
+from website.public_files import views as public_files_views
 from website.notifications import views as notification_views
 
 
@@ -56,6 +56,10 @@ def get_globals():
     OSFWebRenderer.
     """
     user = _get_current_user()
+    try:
+        public_files_id = Node.find_one(Q("contributors", "eq", user._id) & Q("is_public_files_collection", "eq", True))._id
+    except (AttributeError, NoResultsFound):
+        public_files_id = None
     user_institutions = [{'id': inst._id, 'name': inst.name, 'logo_path': inst.logo_path} for inst in user.affiliated_institutions] if user else []
     all_institutions = [{'id': inst._id, 'name': inst.name, 'logo_path': inst.logo_path} for inst in Institution.find().sort('name')]
     location = geolite2.lookup(request.remote_addr) if request.remote_addr else None
@@ -122,6 +126,7 @@ def get_globals():
             },
         },
         'maintenance': maintenance.get_maintenance(),
+        'public_files_id': public_files_id,
     }
 
 
@@ -276,7 +281,22 @@ def make_url_map(app):
             website_views.dashboard,
             OsfWebRenderer('home.mako', trust=False)
         ),
-
+        Rule(
+            [
+                '/public_files/',
+            ],
+            'get',
+            public_files_views.view_public_files,
+            OsfWebRenderer('public_files.mako', trust=False),
+        ),
+        Rule(
+            [
+                '/public_files/<uid>',
+            ],
+            'get',
+            public_files_views.view_public_files_id,
+            OsfWebRenderer('public_files.mako', trust=False),
+        ),
         Rule(
             '/myprojects/',
             'get',
@@ -1081,7 +1101,6 @@ def make_url_map(app):
             project_views.register.node_registration_retraction_get,
             OsfWebRenderer('project/retract_registration.mako', trust=False)
         ),
-
         Rule(
             '/ids/<category>/<path:value>/',
             'get',

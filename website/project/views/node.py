@@ -252,7 +252,6 @@ def node_fork_page(auth, node, **kwargs):
 def node_registrations(auth, node, **kwargs):
     return _view_project(node, auth, primary=True)
 
-
 @must_be_valid_project
 @must_be_contributor_or_public_but_not_anonymized
 def node_forks(auth, node, **kwargs):
@@ -639,7 +638,6 @@ def _should_show_wiki_widget(node, user):
     else:
         return has_wiki
 
-
 def _view_project(node, auth, primary=False):
     """Build a JSON object containing everything needed to render
     project.view.mako.
@@ -734,7 +732,8 @@ def _view_project(node, auth, primary=False):
             'institutions': get_affiliated_institutions(node) if node else [],
             'alternative_citations': [citation.to_json() for citation in node.alternative_citations],
             'has_draft_registrations': node.has_active_draft_registrations,
-            'contributors': [contributor._id for contributor in node.contributors]
+            'contributors': [contributor._id for contributor in node.contributors],
+            'is_public_files_collection': node.is_public_files_collection
         },
         'parent_node': {
             'exists': parent is not None,

@@ -8,6 +8,7 @@ var $ = require('jquery');
 var m = require('mithril');
 var lodashGet = require('lodash.get');
 
+var PublicFilesDropzone = require('js/home-page/publicFilesDropzone');
 var QuickSearchProject = require('js/home-page/quickProjectSearchPlugin');
 var NewAndNoteworthy = require('js/home-page/newAndNoteworthyPlugin');
 var MeetingsAndConferences = require('js/home-page/meetingsAndConferencesPlugin');
@@ -31,7 +32,11 @@ $(document).ready(function(){
             return [
                 m('.quickSearch', m('.container.p-t-lg',
                     [
-                        m('.row.m-t-lg', [
+                        m('.m-t-lg', [
+                            m(columnSizeClass, m.component(PublicFilesDropzone, {}))
+                        ]),
+
+                        m('.m-t-lg.p-b-md', [
                             m(columnSizeClass, m.component(QuickSearchProject, {}))
                         ])
                     ]
@@ -79,4 +84,5 @@ $(document).ready(function(){
         // Update user's timezone and locale
         ensureUserTimezone(user.timezone, user.locale, user.id);
     }
+
 });

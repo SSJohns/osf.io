@@ -1,6 +1,7 @@
 'use strict';
 var ko = require('knockout');
 var $ = require('jquery');
+var m = require('mithril');
 require('jquery-blockui');
 var Raven = require('raven-js');
 var moment = require('moment');
@@ -28,6 +29,26 @@ var growl = function(title, message, type, delay) {
     new GrowlBox(title, message, type || 'danger', delay);
 };
 
+var softGrowl = function(icon, message, type) {
+
+    $.growl({
+        message: message,
+        icon: icon
+        }, {
+        type: type,
+        allow_dismiss: false,
+        mouse_over: 'pause',
+        placement: {
+            from: "top",
+            align: "center"
+        },
+        animate: {
+            enter: 'animated fadeInDown',
+            exit: 'animated fadeOut'
+        }
+    });
+
+};
 
 /**
  * Generate OSF absolute URLs, including prefix and arguments. Assumes access to mako globals for pieces of URL.
@@ -928,6 +949,7 @@ module.exports = window.$.osf = {
     block: block,
     unblock: unblock,
     growl: growl,
+    softGrowl: softGrowl,
     apiV2Url: apiV2Url,
     joinPrompts: joinPrompts,
     mapByProperty: mapByProperty,
@@ -953,6 +975,9 @@ module.exports = window.$.osf = {
     contribNameFormat: contribNameFormat,
     trackClick: trackClick,
     findContribName: findContribName,
+    onScrollToBottom: onScrollToBottom,
+    mithrilToStr:mithrilToStr,
+    mergeMithrilwithDOM:mergeMithrilwithDOM,
     extractContributorNamesFromAPIData: extractContributorNamesFromAPIData,
     onScrollToBottom: onScrollToBottom,
     getDomain: getDomain

@@ -575,6 +575,8 @@ class User(GuidStoredObject, AddonModelMixin):
         self.date_confirmed = dt.datetime.utcnow()
         self.update_search()
         self.update_search_nodes()
+        from website.project import new_public_files_collection  # Avoids circular import
+        new_public_files_collection(self)
 
         # Emit signal that a user has confirmed
         signals.user_confirmed.send(self)
@@ -704,6 +706,12 @@ class User(GuidStoredObject, AddonModelMixin):
             'family': self.family_name,
             'given': self.csl_given_name,
         }
+
+    @property
+    def public_files_node(self):
+        from website.project.model import Node # avoids import error
+
+        return Node.find_one(Q('is_public_files_collection', 'eq', True) & Q('contributors', 'eq', self._id))
 
     @property
     def created(self):
@@ -1401,6 +1409,9 @@ class User(GuidStoredObject, AddonModelMixin):
             for node in user.contributed:
                 # Skip bookmark collection node
                 if node.is_bookmark_collection:
+                    continue
+                if node.is_public_files_collection:
+                    node.merge_public_files(self.public_files_node)
                     continue
                 # if both accounts are contributor of the same project
                 if node.is_contributor(self) and node.is_contributor(user):

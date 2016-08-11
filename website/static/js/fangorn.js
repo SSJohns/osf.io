@@ -19,7 +19,7 @@ var waterbutler = require('js/waterbutler');
 
 var iconmap = require('js/iconmap');
 var storageAddons = require('json!storageAddons.json');
-
+var cb = require('js/clipboard');
 // CSS
 require('css/fangorn.css');
 
@@ -1350,6 +1350,7 @@ function _fangornResolveRows(item) {
     var defaultColumns = [];
     var configOption;
     item.css = '';
+
     if(tb.isMultiselected(item.id)){
         item.css = 'fangorn-selected';
     }
@@ -1390,6 +1391,7 @@ function _fangornResolveRows(item) {
         filter : false,
         custom : function() {return item.data.size ? $osf.humanFileSize(item.data.size, true) : '';}
     });
+<<<<<<< HEAD
     defaultColumns.push({
         data: 'version',
         filter: true,
@@ -1416,6 +1418,44 @@ function _fangornResolveRows(item) {
         filter : false,
         custom : _fangornModifiedColumn
     });
+=======
+
+    if(window.contextVars.isPublicFilesCol) {
+        if (item.data.kind === 'file') {
+            defaultColumns.push(
+            {
+                data : 'Share Link',  // Data field name
+                sortInclude : false,
+                filter : false,
+                custom : function() {
+                    var link = 'http://localhost:5000/project/' + window.contextVars.publicFilesId + "/files/osfstorage" + item.data.path;
+                    return cb.generateClipboard(link); }
+            });
+        }
+    }
+
+   if (item.data.provider === 'osfstorage') {
+       defaultColumns.push({
+           data : 'downloads',
+           sortInclude : false,
+           filter : false,
+           custom: function() { return lodashGet(item, 'data.extra.downloads', '').toString(); }
+       });
+   } else {
+       defaultColumns.push({
+           data : 'downloads',
+           sortInclude : false,
+           filter : false,
+           custom : function() { return m(''); }
+       });
+   }
+   defaultColumns.push(
+   {
+       data : 'modified',  // Data field name
+       filter : false,
+       custom : _fangornModifiedColumn
+   });
+>>>>>>> 14949c442bb30034abf4e05f375adab1c9ce8de1
     configOption = resolveconfigOption.call(this, item, 'resolveRows', [item]);
     return configOption || defaultColumns;
 }
@@ -1428,6 +1468,7 @@ function _fangornResolveRows(item) {
  */
 function _fangornColumnTitles () {
     var columns = [];
+<<<<<<< HEAD
     columns.push(
     {
         title: 'Name',
@@ -1452,6 +1493,56 @@ function _fangornColumnTitles () {
         sort : true,
         sortType : 'text'
     });
+=======
+    if(window.contextVars.isPublicFilesCol) {
+        columns.push(
+        {
+            title: 'Name',
+            width : '30%',
+            sort : true,
+            sortType : 'text'
+        }, {
+            title : 'Size',
+            width : '10%',
+            sort : false
+        }, {
+            title : 'Share Link',
+            width : '30%',
+            sort : false
+        }, {
+            title : 'Downloads',
+            width : '10%',
+            sort : false
+        }, {
+            title : 'Modified',
+            width : '20%',
+            sort : true,
+            sortType : 'text'
+        });
+    }else{
+     columns.push(
+        {
+            title: 'Name',
+            width : '64%',
+            sort : true,
+            sortType : 'text'
+        }, {
+            title : 'Size',
+            width : '8%',
+            sort : false
+        }, {
+            title : 'Downloads',
+            width : '8%',
+            sort : false
+        }, {
+            title : 'Modified',
+            width : '20%',
+            sort : true,
+            sortType : 'text'
+        });
+    }
+
+>>>>>>> 14949c442bb30034abf4e05f375adab1c9ce8de1
     return columns;
 }
 

@@ -73,6 +73,16 @@ from keen import scoped_keys
 
 logger = logging.getLogger(__name__)
 
+def disable_for_public_files_collection(func):
+    @functools.wraps(func)
+    def wrapped(*args, **kwargs):
+
+        if args[0].is_public_files_collection:
+            raise NodeStateError('Forbidden for a public files collection')
+
+        return func(*args, **kwargs)
+
+    return wrapped
 
 def has_anonymous_link(node, auth):
     """check if the node is anonymous to the user
@@ -858,6 +868,7 @@ class Node(GuidStoredObject, AddonModelMixin, IdentifierMixin, Commentable):
 
     # Project Organization
     is_bookmark_collection = fields.BooleanField(default=False, index=True)
+    is_public_files_collection = fields.BooleanField(default=False, index=True)
     is_collection = fields.BooleanField(default=False, index=True)
 
     is_deleted = fields.BooleanField(default=False, index=True)
@@ -1356,6 +1367,10 @@ class Node(GuidStoredObject, AddonModelMixin, IdentifierMixin, Commentable):
                 return True
 
         return False
+
+    def merge_public_files(self,node):
+        if not self.is_public_files_collection:
+            raise NodeStateError('must be Public Files collection to merge')
 
     def get_permissions(self, user):
         """Get list of permissions for user.
@@ -1885,6 +1900,8 @@ class Node(GuidStoredObject, AddonModelMixin, IdentifierMixin, Commentable):
             save=False,
         )
 
+
+
     @property
     def node_ids(self):
         return [
@@ -2156,6 +2173,7 @@ class Node(GuidStoredObject, AddonModelMixin, IdentifierMixin, Commentable):
         for child in self.nodes_primary:
             child.delete_registration_tree(save=save)
 
+    @disable_for_public_files_collection
     def remove_node(self, auth, date=None):
         """Marks a node as deleted.
 
@@ -2221,6 +2239,7 @@ class Node(GuidStoredObject, AddonModelMixin, IdentifierMixin, Commentable):
 
         return True
 
+    @disable_for_public_files_collection
     def fork_node(self, auth, title=None):
         """Recursively fork a node.
 
@@ -2330,6 +2349,7 @@ class Node(GuidStoredObject, AddonModelMixin, IdentifierMixin, Commentable):
 
         return forked
 
+    @disable_for_public_files_collection
     def register_node(self, schema, auth, data, parent=None):
         """Make a frozen copy of a node.
 
@@ -2418,6 +2438,7 @@ class Node(GuidStoredObject, AddonModelMixin, IdentifierMixin, Commentable):
 
         return registered
 
+    @disable_for_public_files_collection
     def remove_tag(self, tag, auth, save=True):
         if not tag:
             raise InvalidTagError
@@ -2439,6 +2460,7 @@ class Node(GuidStoredObject, AddonModelMixin, IdentifierMixin, Commentable):
                 self.save()
             return True
 
+    @disable_for_public_files_collection
     def add_tag(self, tag, auth, save=True, log=True):
         if not isinstance(tag, Tag):
             tag_instance = Tag.load(tag)
@@ -2465,6 +2487,7 @@ class Node(GuidStoredObject, AddonModelMixin, IdentifierMixin, Commentable):
             if save:
                 self.save()
 
+    @disable_for_public_files_collection
     def add_citation(self, auth, save=False, log=True, citation=None, **kwargs):
         if not citation:
             citation = AlternativeCitation(**kwargs)
@@ -2485,6 +2508,7 @@ class Node(GuidStoredObject, AddonModelMixin, IdentifierMixin, Commentable):
                 self.save()
         return citation
 
+    @disable_for_public_files_collection
     def edit_citation(self, auth, instance, save=False, log=True, **kwargs):
         citation = {'name': instance.name, 'text': instance.text}
         new_name = kwargs.get('name', instance.name)
@@ -2510,6 +2534,7 @@ class Node(GuidStoredObject, AddonModelMixin, IdentifierMixin, Commentable):
             self.save()
         return instance
 
+    @disable_for_public_files_collection
     def remove_citation(self, auth, instance, save=False, log=True):
         citation = {'name': instance.name, 'text': instance.text}
         self.alternative_citations.remove(instance)
